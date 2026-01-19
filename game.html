@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Black Hole Incremental - An epic idle game featuring prestige mechanics, quasar gacha, and tower notation numbers beyond infinity!">
+    <meta name="author" content="Black Hole Games">
+    <meta property="og:title" content="Black Hole Incremental">
+    <meta property="og:description" content="Absorb the universe in this deep incremental game with prestige, gacha, and endgame content!">
+    <title>Black Hole Incremental</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+        #game-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #header {
+            background: linear-gradient(180deg, #1a0a2e 0%, #0d0015 100%);
+            padding: 10px 20px;
+            border-bottom: 2px solid #8b5cf6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        #header h1 {
+            background: linear-gradient(90deg, #a855f7, #ec4899, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 1.8em;
+        }
+        .currency-display {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .currency {
+            background: rgba(139, 92, 246, 0.2);
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: 1px solid #8b5cf6;
+        }
+        .currency-name { font-size: 0.8em; color: #a78bfa; }
+        .currency-value { font-size: 1.2em; font-weight: bold; color: #fff; }
+        #main-content {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+        @media (max-width: 800px) {
+            #main-content { flex-direction: column; }
+            #side-panel { width: 100% !important; max-height: 50vh; }
+            #canvas-container { min-height: 300px; }
+        }
+        #canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: radial-gradient(ellipse at center, #1a0a2e 0%, #000 70%);
+            position: relative;
+            min-height: 400px;
+        }
+        #gameCanvas {
+            border-radius: 50%;
+            box-shadow: 0 0 100px rgba(139, 92, 246, 0.5);
+            max-width: 100%;
+            max-height: 100%;
+        }
+        #side-panel {
+            width: 400px;
+            background: linear-gradient(180deg, #0d0015 0%, #1a0a2e 100%);
+            border-left: 2px solid #8b5cf6;
+            overflow-y: auto;
+            padding: 15px;
+        }
+        .tab-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+            margin-bottom: 15px;
+        }
+        .tab-btn {
+            flex: 1;
+            min-width: 70px;
+            padding: 8px;
+            background: rgba(139, 92, 246, 0.2);
+            border: 1px solid #8b5cf6;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 5px;
+            transition: all 0.3s;
+            font-size: 0.8em;
+        }
+        .tab-btn:hover, .tab-btn.active {
+            background: rgba(139, 92, 246, 0.5);
+            box-shadow: 0 0 15px rgba(139, 92, 246, 0.5);
+        }
+        .tab-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .upgrade-btn, .generator-btn {
+            width: 100%;
+            padding: 12px;
+            margin: 5px 0;
+            background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+            border: 1px solid #6366f1;
+            color: #fff;
+            cursor: pointer;
+            border-radius: 8px;
+            text-align: left;
+            transition: all 0.3s;
+        }
+        .upgrade-btn:hover:not(:disabled), .generator-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #312e81 0%, #4338ca 100%);
+            transform: translateX(5px);
+            box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+        }
+        .upgrade-btn:disabled, .generator-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-title { font-weight: bold; font-size: 1.1em; }
+        .btn-desc { font-size: 0.85em; color: #a5b4fc; margin: 5px 0; }
+        .btn-cost { font-size: 0.9em; color: #fbbf24; }
+        .btn-owned { float: right; color: #34d399; }
+        .prestige-btn {
+            background: linear-gradient(135deg, #7c3aed 0%, #c026d3 100%);
+            border-color: #e879f9;
+            margin-top: 20px;
+        }
+        .prestige-btn:hover:not(:disabled) {
+            background: linear-gradient(135deg, #8b5cf6 0%, #d946ef 100%);
+        }
+        .quasar-roll {
+            background: linear-gradient(135deg, #0ea5e9 0%, #8b5cf6 50%, #ec4899 100%);
+            animation: shimmer 2s infinite;
+        }
+        @keyframes shimmer {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.3); }
+        }
+        .quasar-item {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            border: 2px solid;
+        }
+        .rarity-garbage { border-color: #6b7280; background: rgba(107, 114, 128, 0.2); }
+        .rarity-common { border-color: #9ca3af; background: rgba(156, 163, 175, 0.2); }
+        .rarity-adequate { border-color: #22c55e; background: rgba(34, 197, 94, 0.2); }
+        .rarity-uncommon { border-color: #3b82f6; background: rgba(59, 130, 246, 0.2); }
+        .rarity-rare { border-color: #a855f7; background: rgba(168, 85, 247, 0.2); }
+        .rarity-epic { border-color: #f59e0b; background: rgba(245, 158, 11, 0.2); }
+        .rarity-legendary { border-color: #ef4444; background: rgba(239, 68, 68, 0.2); }
+        .rarity-mythic { border-color: #ec4899; background: rgba(236, 72, 153, 0.2); }
+        .rarity-godly { border-color: #ffd700; background: rgba(255, 215, 0, 0.3); animation: godly-glow 1s infinite; }
+        .rarity-impossible { border-color: #fff; background: rgba(255, 255, 255, 0.1); animation: impossible-pulse 0.5s infinite; }
+        .rarity-omni { border-color: #ff00ff; background: linear-gradient(45deg, rgba(255,0,0,0.2), rgba(0,255,0,0.2), rgba(0,0,255,0.2)); animation: omni-shift 3s infinite; }
+        .rarity-null { border-color: #00ff00; background: #000; color: #00ff00; font-family: monospace; animation: glitch 0.3s infinite; }
+        .plus-variant { box-shadow: 0 0 15px currentColor; }
+        @keyframes godly-glow { 0%, 100% { box-shadow: 0 0 10px #ffd700; } 50% { box-shadow: 0 0 30px #ffd700; } }
+        @keyframes impossible-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }
+        @keyframes omni-shift { 0% { filter: hue-rotate(0deg); } 100% { filter: hue-rotate(360deg); } }
+        @keyframes glitch { 0% { transform: translate(0); } 25% { transform: translate(-2px, 2px); } 50% { transform: translate(2px, -2px); } 75% { transform: translate(-2px, -2px); } 100% { transform: translate(0); } }
+        .challenge-btn {
+            background: linear-gradient(135deg, #dc2626 0%, #991b1b 100%);
+            border-color: #f87171;
+        }
+        .challenge-btn.completed {
+            background: linear-gradient(135deg, #16a34a 0%, #166534 100%);
+            border-color: #4ade80;
+        }
+        .challenge-btn.active-challenge {
+            animation: challenge-active 1s infinite;
+        }
+        @keyframes challenge-active {
+            0%, 100% { box-shadow: 0 0 20px #ef4444; }
+            50% { box-shadow: 0 0 40px #ef4444; }
+        }
+        .achievement {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 8px;
+            border: 1px solid #4b5563;
+            background: rgba(75, 85, 99, 0.2);
+            opacity: 0.5;
+        }
+        .achievement.unlocked {
+            border-color: #fbbf24;
+            background: rgba(251, 191, 36, 0.2);
+            opacity: 1;
+        }
+        .achievement-popup {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+            color: #000;
+            padding: 15px 25px;
+            border-radius: 10px;
+            animation: popup-slide 0.5s ease-out;
+            z-index: 1000;
+            box-shadow: 0 0 30px rgba(251, 191, 36, 0.5);
+        }
+        @keyframes popup-slide {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .stat-item {
+            background: rgba(139, 92, 246, 0.1);
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        .stat-label { font-size: 0.8em; color: #a78bfa; }
+        .stat-value { font-size: 1.1em; font-weight: bold; }
+        #secret-input {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #8b5cf6;
+            color: #fff;
+            border-radius: 5px;
+            margin-top: 10px;
+        }
+        .energy-overload {
+            animation: shake 0.1s infinite, red-shift 0.5s infinite;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translate(0); }
+            25% { transform: translate(-5px, 5px); }
+            50% { transform: translate(5px, -5px); }
+            75% { transform: translate(-5px, -5px); }
+        }
+        @keyframes red-shift {
+            0%, 100% { filter: hue-rotate(0deg); }
+            50% { filter: hue-rotate(-30deg) saturate(1.5); }
+        }
+        .fabric-tear {
+            position: absolute;
+            background: linear-gradient(90deg, transparent, #fff, transparent);
+            pointer-events: none;
+            animation: tear-fade 2s forwards;
+        }
+        @keyframes tear-fade {
+            0% { opacity: 1; }
+            100% { opacity: 0; }
+        }
+        .section-title {
+            font-size: 1.2em;
+            color: #a78bfa;
+            margin: 15px 0 10px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid rgba(139, 92, 246, 0.3);
+        }
+        .save-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        .save-buttons button {
+            flex: 1;
+            min-width: 80px;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        #saveBtn { background: #22c55e; color: #000; }
+        #loadBtn { background: #3b82f6; color: #fff; }
+        #resetBtn { background: #ef4444; color: #fff; }
+        #exportBtn { background: #f59e0b; color: #000; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="header">
+            <h1>⬤ Black Hole Incremental</h1>
+            <div class="currency-display">
+                <div class="currency">
+                    <div class="currency-name">Black Points</div>
+                    <div class="currency-value" id="bp-display">0</div>
+                </div>
+                <div class="currency" id="ip-container" style="display:none;">
+                    <div class="currency-name">Implosion Points</div>
+                    <div class="currency-value" id="ip-display">0</div>
+                </div>
+                <div class="currency" id="qp-container" style="display:none;">
+                    <div class="currency-name">Quasar Points</div>
+                    <div class="currency-value" id="qp-display">0</div>
+                </div>
+                <div class="currency" id="hr-container" style="display:none;">
+                    <div class="currency-name">Hawking Radiation</div>
+                    <div class="currency-value" id="hr-display">0</div>
+                </div>
+            </div>
+        </div>
+        <div id="main-content">
+            <div id="canvas-container">
+                <canvas id="gameCanvas" width="500" height="500"></canvas>
+            </div>
+            <div id="side-panel">
+                <div class="tab-buttons">
+                    <button class="tab-btn active" data-tab="generators">Rings</button>
+                    <button class="tab-btn" data-tab="upgrades">Upgrades</button>
+                    <button class="tab-btn" data-tab="implosion" id="implosion-tab" disabled>Implosion</button>
+                    <button class="tab-btn" data-tab="quasars" id="quasars-tab" disabled>Quasars</button>
+                    <button class="tab-btn" data-tab="challenges" id="challenges-tab" disabled>Challenges</button>
+                    <button class="tab-btn" data-tab="endgame" id="endgame-tab" disabled>Endgame</button>
+                    <button class="tab-btn" data-tab="achievements">Achievements</button>
+                    <button class="tab-btn" data-tab="stats">Stats</button>
+                    <button class="tab-btn" data-tab="options">Options</button>
+                </div>
+                
+                <div id="tab-generators" class="tab-content active"></div>
+                <div id="tab-upgrades" class="tab-content"></div>
+                <div id="tab-implosion" class="tab-content"></div>
+                <div id="tab-quasars" class="tab-content"></div>
+                <div id="tab-challenges" class="tab-content"></div>
+                <div id="tab-endgame" class="tab-content"></div>
+                <div id="tab-achievements" class="tab-content"></div>
+                <div id="tab-stats" class="tab-content"></div>
+                <div id="tab-options" class="tab-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ==================== BIGNUMBER LIBRARY WITH TOWER NOTATION ====================
+    class BigNum {
+        constructor(mantissa = 0, exponent = 0, tower = 0) {
+            if (typeof mantissa === 'string') {
+                this.fromString(mantissa);
+            } else if (mantissa instanceof BigNum) {
+                this.mantissa = mantissa.mantissa;
+                this.exponent = mantissa.exponent;
+                this.tower = mantissa.tower;
+            } else {
+                this.tower = tower;
+                if (tower > 0) {
+                    this.mantissa = mantissa;
+                    this.exponent = exponent;
+                } else if (exponent === 0 && Math.abs(mantissa) < 1e15) {
+                    this.mantissa = mantissa;
+                    this.exponent = 0;
+                    this.normalize();
+                } else {
+                    this.mantissa = mantissa;
+                    this.exponent = exponent;
+                    this.normalize();
+                }
+            }
+        }
+
+        normalize() {
+            if (this.tower > 0) return this;
+            if (this.mantissa === 0) {
+                this.exponent = 0;
+                return this;
+            }
+            if (!isFinite(this.mantissa) || !isFinite(this.exponent)) {
+                this.mantissa = 1;
+                this.exponent = Number.MAX_VALUE;
+                return this;
+            }
+            while (Math.abs(this.mantissa) >= 10) {
+                this.mantissa /= 10;
+                this.exponent++;
+            }
+            while (Math.abs(this.mantissa) < 1 && this.mantissa !== 0) {
+                this.mantissa *= 10;
+                this.exponent--;
+            }
+            if (this.exponent > 1e15) {
+                this.tower = 1;
+                this.mantissa = Math.log10(this.exponent);
+                this.exponent = 0;
+            }
+            if (this.tower === 1 && this.mantissa > 1e15) {
+                this.tower = 2;
+                this.mantissa = Math.log10(this.mantissa);
+            }
+            return this;
+        }
+
+        fromString(str) {
+            str = str.trim().toLowerCase();
+            if (str.startsWith('ee')) {
+                const rest = str.slice(2);
+                if (rest.startsWith('e')) {
+                    this.tower = 2;
+                    this.mantissa = parseFloat(rest.slice(1));
+                    this.exponent = 0;
+                } else {
+                    this.tower = 1;
+                    this.mantissa = parseFloat(rest);
+                    this.exponent = 0;
+                }
+            } else if (str.includes('e')) {
+                const parts = str.split('e');
+                this.mantissa = parseFloat(parts[0]) || 1;
+                this.exponent = parseFloat(parts[1]) || 0;
+                this.tower = 0;
+                this.normalize();
+            } else {
+                const val = parseFloat(str);
+                this.mantissa = val;
+                this.exponent = 0;
+                this.tower = 0;
+                this.normalize();
+            }
+            return this;
+        }
+
+        clone() {
+            return new BigNum(this.mantissa, this.exponent, this.tower);
+        }
+
+        static from(val) {
+            if (val instanceof BigNum) return val.clone();
+            if (typeof val === 'string') return new BigNum(val);
+            return new BigNum(val);
+        }
+
+        toNumber() {
+            if (this.tower > 0) return Infinity;
+            if (this.exponent > 308) return Infinity;
+            if (this.exponent < -324) return 0;
+            return this.mantissa * Math.pow(10, this.exponent);
+        }
+
+        toString() {
+            if (this.tower >= 2) {
+                return `ee${this.format(this.mantissa)}`;
+            }
+            if (this.tower === 1) {
+                return `e${this.format(this.mantissa)}`;
+            }
+            if (this.exponent >= 1000000) {
+                return `ee${this.format(Math.log10(this.exponent))}`;
+            }
+            if (this.exponent >= 6) {
+                return `${this.mantissa.toFixed(2)}e${this.formatExp(this.exponent)}`;
+            }
+            if (this.exponent >= 0) {
+                const val = this.mantissa * Math.pow(10, this.exponent);
+                if (val >= 1000) return val.toFixed(0);
+                if (val >= 100) return val.toFixed(1);
+                return val.toFixed(2);
+            }
+            return (this.mantissa * Math.pow(10, this.exponent)).toFixed(Math.min(10, Math.abs(this.exponent) + 2));
+        }
+
+        format(n) {
+            if (n >= 1e6) return n.toExponential(2);
+            if (n >= 1000) return n.toFixed(0);
+            return n.toFixed(2);
+        }
+
+        formatExp(e) {
+            if (e >= 1e6) return e.toExponential(2);
+            return e.toString();
+        }
+
+        add(other) {
+            other = BigNum.from(other);
+            if (this.tower > other.tower) return this.clone();
+            if (other.tower > this.tower) return other.clone();
+            if (this.tower > 0) {
+                return this.mantissa > other.mantissa ? this.clone() : other.clone();
+            }
+            const expDiff = this.exponent - other.exponent;
+            if (expDiff > 15) return this.clone();
+            if (expDiff < -15) return other.clone();
+            let result;
+            if (expDiff >= 0) {
+                result = new BigNum(this.mantissa + other.mantissa * Math.pow(10, -expDiff), this.exponent);
+            } else {
+                result = new BigNum(this.mantissa * Math.pow(10, expDiff) + other.mantissa, other.exponent);
+            }
+            return result.normalize();
+        }
+
+        sub(other) {
+            other = BigNum.from(other);
+            return this.add(other.neg());
+        }
+
+        neg() {
+            return new BigNum(-this.mantissa, this.exponent, this.tower);
+        }
+
+        mul(other) {
+            other = BigNum.from(other);
+            if (this.tower > 0 || other.tower > 0) {
+                const log1 = this.log10();
+                const log2 = other.log10();
+                return BigNum.pow10(log1.add(log2));
+            }
+            const result = new BigNum(
+                this.mantissa * other.mantissa,
+                this.exponent + other.exponent
+            );
+            return result.normalize();
+        }
+
+        div(other) {
+            other = BigNum.from(other);
+            if (other.eq(0)) return new BigNum(Infinity);
+            if (this.tower > 0 || other.tower > 0) {
+                const log1 = this.log10();
+                const log2 = other.log10();
+                return BigNum.pow10(log1.sub(log2));
+            }
+            const result = new BigNum(
+                this.mantissa / other.mantissa,
+                this.exponent - other.exponent
+            );
+            return result.normalize();
+        }
+
+        pow(exp) {
+            exp = BigNum.from(exp);
+            if (this.lte(0)) return new BigNum(0);
+            const logThis = this.log10();
+            const result = logThis.mul(exp);
+            return BigNum.pow10(result);
+        }
+
+        sqrt() {
+            return this.pow(0.5);
+        }
+
+        log10() {
+            if (this.tower >= 2) {
+                return new BigNum(this.mantissa, 0, this.tower - 1);
+            }
+            if (this.tower === 1) {
+                return new BigNum(this.mantissa, 0, 0);
+            }
+            if (this.mantissa <= 0) return new BigNum(-Infinity);
+            const log = Math.log10(this.mantissa) + this.exponent;
+            return new BigNum(log);
+        }
+
+        log(base) {
+            return this.log10().div(BigNum.from(base).log10());
+        }
+
+        static pow10(exp) {
+            exp = BigNum.from(exp);
+            if (exp.tower > 0) {
+                return new BigNum(exp.mantissa, exp.exponent, exp.tower + 1);
+            }
+            if (exp.exponent > 15) {
+                return new BigNum(exp.mantissa * Math.pow(10, exp.exponent % 1), Math.floor(exp.toNumber()), 1);
+            }
+            const expVal = exp.toNumber();
+            if (expVal > 1e15) {
+                return new BigNum(Math.log10(expVal), 0, 1);
+            }
+            const intExp = Math.floor(expVal);
+            const fracExp = expVal - intExp;
+            return new BigNum(Math.pow(10, fracExp), intExp).normalize();
+        }
+
+        static max(a, b) {
+            a = BigNum.from(a);
+            b = BigNum.from(b);
+            return a.gte(b) ? a : b;
+        }
+
+        static min(a, b) {
+            a = BigNum.from(a);
+            b = BigNum.from(b);
+            return a.lte(b) ? a : b;
+        }
+
+        eq(other) {
+            other = BigNum.from(other);
+            if (this.tower !== other.tower) return false;
+            return Math.abs(this.mantissa - other.mantissa) < 1e-9 && this.exponent === other.exponent;
+        }
+
+        gt(other) {
+            other = BigNum.from(other);
+            if (this.tower > other.tower) return true;
+            if (this.tower < other.tower) return false;
+            if (this.tower > 0) return this.mantissa > other.mantissa;
+            if (this.exponent !== other.exponent) return this.exponent > other.exponent;
+            return this.mantissa > other.mantissa;
+        }
+
+        gte(other) { return this.gt(other) || this.eq(other); }
+        lt(other) { return !this.gte(other); }
+        lte(other) { return !this.gt(other); }
+
+        floor() {
+            if (this.tower > 0 || this.exponent >= 15) return this.clone();
+            return new BigNum(Math.floor(this.toNumber()));
+        }
+
+        ceil() {
+            if (this.tower > 0 || this.exponent >= 15) return this.clone();
+            return new BigNum(Math.ceil(this.toNumber()));
+        }
+
+        abs() {
+            return new BigNum(Math.abs(this.mantissa), this.exponent, this.tower);
+        }
+
+        isFinite() {
+            return isFinite(this.mantissa) && isFinite(this.exponent);
+        }
+
+        toJSON() {
+            return { m: this.mantissa, e: this.exponent, t: this.tower };
+        }
+
+        static fromJSON(obj) {
+            if (typeof obj === 'number') return new BigNum(obj);
+            return new BigNum(obj.m || 0, obj.e || 0, obj.t || 0);
+        }
+    }
+
+    // ==================== GAME DATA ====================
+    const RARITIES = {
+        garbage: { chance: 0.30, color: '#6b7280', mult: 1.01, name: 'Garbage' },
+        common: { chance: 0.25, color: '#9ca3af', mult: 1.05, name: 'Common' },
+        adequate: { chance: 0.18, color: '#22c55e', mult: 1.15, name: 'Adequate' },
+        uncommon: { chance: 0.12, color: '#3b82f6', mult: 1.3, name: 'Uncommon' },
+        rare: { chance: 0.08, color: '#a855f7', mult: 1.5, name: 'Rare' },
+        epic: { chance: 0.04, color: '#f59e0b', mult: 2, name: 'Epic' },
+        legendary: { chance: 0.02, color: '#ef4444', mult: 3, name: 'Legendary' },
+        mythic: { chance: 0.0089, color: '#ec4899', mult: 5, name: 'Mythic' },
+        godly: { chance: 0.001, color: '#ffd700', mult: 10, name: 'Godly' },
+        impossible: { chance: 0.0001, color: '#ffffff', mult: 50, name: 'Impossible' },
+        omni: { chance: 0.00001, color: '#ff00ff', mult: 1000, name: 'Omni' },
+        null: { chance: 0.000001, color: '#00ff00', mult: -1, name: 'NULL', glitch: true }
+    };
+
+    const PLUS_EFFECTS = {
+        garbage: (g) => g.tickSpeed = g.tickSpeed.mul(1.01),
+        common: (g) => g.bpMult = g.bpMult.mul(1.1),
+        adequate: (g) => g.ipMult = g.ipMult.mul(1.05),
+        uncommon: (g) => g.ringCostDiv = g.ringCostDiv.mul(1.02),
+        rare: (g) => g.expBonus = g.expBonus.add(0.01),
+        epic: (g) => g.softcapStart = g.softcapStart.mul(1.5),
+        legendary: (g) => { g.legendaryDecay = (g.legendaryDecay || 1) * 0.99; g.bpMult = g.bpMult.mul(2 * g.legendaryDecay); },
+        mythic: (g) => g.prestigeMult = g.prestigeMult.mul(1.2),
+    };
+
+    const CHALLENGES = [
+        { id: 1, name: "Lightless", desc: "BP gain /100", goal: new BigNum(1e20), reward: "2x IP gain", rewardMult: 2 },
+        { id: 2, name: "Frozen Time", desc: "Tick speed /10", goal: new BigNum(1e15), reward: "1.5x tick speed", rewardMult: 1.5 },
+        { id: 3, name: "Unstable", desc: "Random BP loss every 10s", goal: new BigNum(1e25), reward: "10% BP/s passive", rewardMult: 0.1 },
+        { id: 4, name: "Singularity", desc: "Only Ring 1 available", goal: new BigNum(1e10), reward: "Ring 1 ^1.1", rewardMult: 1.1 },
+        { id: 5, name: "Inverted", desc: "Higher rings cost more", goal: new BigNum(1e30), reward: "All rings +10% eff", rewardMult: 0.1 },
+        { id: 6, name: "Void", desc: "No upgrades", goal: new BigNum(1e12), reward: "Upgrades 2x effect", rewardMult: 2 },
+        { id: 7, name: "Antimatter", desc: "BP decays 1%/s", goal: new BigNum(1e35), reward: "Decay immunity", rewardMult: 1 },
+        { id: 8, name: "Quantum", desc: "50% chance ticks do nothing", goal: new BigNum(1e40), reward: "Double tick rate", rewardMult: 2 },
+        { id: 9, name: "Entropy", desc: "All multipliers sqrt'd", goal: new BigNum(1e50), reward: "Mults ^1.05", rewardMult: 1.05 },
+        { id: 10, name: "Event Horizon", desc: "All challenges at once", goal: new BigNum(1e100), reward: "ENERGY OVERLOAD", rewardMult: Infinity }
+    ];
+
+    const ACHIEVEMENTS = [
+        { id: 1, name: "First Light", desc: "Earn 1 BP", check: (g) => g.bp.gte(1) },
+        { id: 2, name: "Ring Bearer", desc: "Buy Ring 1", check: (g) => g.rings[0].gte(1) },
+        { id: 3, name: "Orbital Mechanics", desc: "Own 10 of each ring", check: (g) => g.rings.every(r => r.gte(10)) },
+        { id: 4, name: "Event Horizon", desc: "Reach 1e50 BP", check: (g) => g.bp.gte(new BigNum(1e50)) },
+        { id: 5, name: "Singularity", desc: "Perform first Implosion", check: (g) => g.totalImplosions >= 1 },
+        { id: 6, name: "Radiation", desc: "Earn 1e10 Hawking Radiation", check: (g) => g.hawkingRadiation.gte(new BigNum(1e10)) },
+        { id: 7, name: "Quasar Hunter", desc: "Roll 10 Quasars", check: (g) => g.totalQuasarRolls >= 10 },
+        { id: 8, name: "Rare Find", desc: "Get a Rare+ Quasar", check: (g) => g.quasars.some(q => ['rare','epic','legendary','mythic','godly','impossible','omni','null'].includes(q.rarity)) },
+        { id: 9, name: "Legendary", desc: "Get a Legendary Quasar", check: (g) => g.quasars.some(q => q.rarity === 'legendary') },
+        { id: 10, name: "Mythic Seeker", desc: "Get a Mythic Quasar", check: (g) => g.quasars.some(q => q.rarity === 'mythic') },
+        { id: 11, name: "Godly Power", desc: "Get a Godly Quasar", check: (g) => g.quasars.some(q => q.rarity === 'godly') },
+        { id: 12, name: "Challenge Accepted", desc: "Complete a Challenge", check: (g) => g.completedChallenges.length > 0 },
+        { id: 13, name: "Challenger", desc: "Complete 5 Challenges", check: (g) => g.completedChallenges.length >= 5 },
+        { id: 14, name: "Overloaded", desc: "Unlock Energy Overload", check: (g) => g.energyOverload },
+        { id: 15, name: "Beyond Infinity", desc: "Reach 1e1000 BP", check: (g) => g.bp.gte(new BigNum("1e1000")) },
+        { id: 16, name: "Tower of Power", desc: "Reach ee6 BP", check: (g) => g.bp.tower >= 1 && g.bp.mantissa >= 6 }
+    ];
+
+    const SECRET_ITEMS = {
+        'CarterIsTheCreator:3': { name: "The Carter", effect: "10x all production", mult: 10 },
+        'debug': { name: "The Bug", effect: "Shows hidden stats", debug: true },
+        'placeholder': { name: "Placeholder", effect: "Does nothing... or does it?", mult: 1.001 },
+        'patashu': { name: "Patashu's Sphere", effect: "Exponent +0.01 to all", expBonus: 0.01 }
+    };
+
+    // ==================== GAME STATE ====================
+    let game = {
+        bp: new BigNum(0),
+        totalBP: new BigNum(0),
+        rings: [new BigNum(0), new BigNum(0), new BigNum(0), new BigNum(0), new BigNum(0), new BigNum(0), new BigNum(0), new BigNum(0)],
+        upgrades: {},
+        ip: new BigNum(0),
+        totalIP: new BigNum(0),
+        totalImplosions: 0,
+        hawkingRadiation: new BigNum(0),
+        implosionUpgrades: {},
+        qp: new BigNum(0),
+        quasars: [],
+        totalQuasarRolls: 0,
+        activeChallenge: null,
+        completedChallenges: [],
+        challengeStartBP: new BigNum(0),
+        achievements: [],
+        secretItems: [],
+        energyOverload: false,
+        fabricTears: 0,
+        whiteHoleUpgrades: {},
+        timeSkips: 0,
+        totalTimePlayed: 0,
+        lastTick: Date.now(),
+        bpMult: new BigNum(1),
+        ipMult: new BigNum(1),
+        tickSpeed: new BigNum(1),
+        ringCostDiv: new BigNum(1),
+        expBonus: new BigNum(0),
+        softcapStart: new BigNum(1e100),
+        prestigeMult: new BigNum(1),
+        legendaryDecay: 1,
+        canvasRotation: 0,
+        planets: [],
+        debris: [],
+        phase: 1
+    };
+
+    // ==================== RING DEFINITIONS ====================
+    const RING_DATA = [
+        { name: "Inner Ring", baseCost: 10, costMult: 1.15, baseProd: 1 },
+        { name: "Second Ring", baseCost: 100, costMult: 1.18, baseProd: 5 },
+        { name: "Third Ring", baseCost: 1000, costMult: 1.22, baseProd: 25 },
+        { name: "Fourth Ring", baseCost: 10000, costMult: 1.28, baseProd: 100 },
+        { name: "Fifth Ring", baseCost: 100000, costMult: 1.35, baseProd: 500 },
+        { name: "Sixth Ring", baseCost: 1e7, costMult: 1.45, baseProd: 2500 },
+        { name: "Seventh Ring", baseCost: 1e10, costMult: 1.6, baseProd: 10000 },
+        { name: "Outer Ring", baseCost: 1e15, costMult: 2, baseProd: 50000 }
+    ];
+
+    const UPGRADES = [
+        { id: 'u1', name: "Gravitational Pull", desc: "2x BP gain", cost: 100, effect: () => { game.bpMult = game.bpMult.mul(2); } },
+        { id: 'u2', name: "Mass Accumulation", desc: "Ring 1 +50% efficiency", cost: 500, effect: () => {} },
+        { id: 'u3', name: "Orbital Resonance", desc: "All rings +10% efficiency", cost: 2000, effect: () => {} },
+        { id: 'u4', name: "Dark Matter", desc: "3x BP gain", cost: 10000, effect: () => { game.bpMult = game.bpMult.mul(3); } },
+        { id: 'u5', name: "Spacetime Warp", desc: "2x tick speed", cost: 50000, effect: () => { game.tickSpeed = game.tickSpeed.mul(2); } },
+        { id: 'u6', name: "Quantum Tunneling", desc: "Ring costs /1.5", cost: 200000, effect: () => { game.ringCostDiv = game.ringCostDiv.mul(1.5); } },
+        { id: 'u7', name: "Stellar Core", desc: "5x BP gain", cost: 1e7, effect: () => { game.bpMult = game.bpMult.mul(5); } },
+        { id: 'u8', name: "Neutron Degeneracy", desc: "Ring 8 unlocked at 50% cost", cost: 1e10, effect: () => {} }
+    ];
+
+    const IMPLOSION_UPGRADES = [
+        { id: 'i1', name: "Temporal Dilution", desc: "Time plays 2x faster", cost: 1, effect: () => { game.tickSpeed = game.tickSpeed.mul(2); } },
+        { id: 'i2', name: "Twin Cores", desc: "Start with Ring 1 = IP", cost: 5, effect: () => {} },
+        { id: 'i3', name: "The Singularity", desc: "IP boosts BP gain (log10)", cost: 25, effect: () => {} },
+        { id: 'i4', name: "Hawking Boost", desc: "HR gain 2x", cost: 10, effect: () => {} },
+        { id: 'i5', name: "Mass Inflation", desc: "BP ^1.01", cost: 100, effect: () => { game.expBonus = game.expBonus.add(0.01); } },
+        { id: 'i6', name: "Void Compression", desc: "Ring costs ^0.95", cost: 500, effect: () => {} }
+    ];
+
+    // ==================== CORE MECHANICS ====================
+    function getRingCost(index) {
+        const ring = RING_DATA[index];
+        let cost = new BigNum(ring.baseCost).mul(BigNum.from(ring.costMult).pow(game.rings[index]));
+        cost = cost.div(game.ringCostDiv);
+        if (game.activeChallenge === 5) {
+            cost = cost.mul(BigNum.from(10).pow(index));
+        }
+        if (game.implosionUpgrades['i6']) {
+            cost = cost.pow(0.95);
+        }
+        return cost;
+    }
+
+    function getRingProduction(index) {
+        const ring = RING_DATA[index];
+        let prod = new BigNum(ring.baseProd).mul(game.rings[index]);
+        
+        if (game.upgrades['u2'] && index === 0) prod = prod.mul(1.5);
+        if (game.upgrades['u3']) prod = prod.mul(1.1);
+        if (game.completedChallenges.includes(4) && index === 0) prod = prod.pow(1.1);
+        if (game.completedChallenges.includes(5)) prod = prod.mul(1.1);
+        
+        return prod;
+    }
+
+    function getTotalProduction() {
+        let total = new BigNum(0);
+        for (let i = 0; i < RING_DATA.length; i++) {
+            if (game.activeChallenge === 4 && i > 0) continue;
+            total = total.add(getRingProduction(i));
+        }
+        return total;
+    }
+
+    function getBPMultiplier() {
+        let mult = game.bpMult.clone();
+        
+        for (const q of game.quasars) {
+            const rarity = RARITIES[q.rarity];
+            if (rarity.mult > 0) {
+                mult = mult.mul(rarity.mult);
+                if (q.plus && PLUS_EFFECTS[q.rarity]) {
+                    PLUS_EFFECTS[q.rarity](game);
+                }
+            }
+        }
+        
+        if (game.implosionUpgrades['i3'] && game.ip.gt(1)) {
+            mult = mult.mul(game.ip.log10().add(1));
+        }
+        
+        for (const item of game.secretItems) {
+            if (SECRET_ITEMS[item]?.mult) {
+                mult = mult.mul(SECRET_ITEMS[item].mult);
+            }
+        }
+        
+        if (game.completedChallenges.includes(6)) mult = mult.mul(2);
+        if (game.completedChallenges.includes(9)) mult = mult.pow(1.05);
+        
+        if (game.activeChallenge === 1) mult = mult.div(100);
+        if (game.activeChallenge === 9) mult = mult.sqrt();
+        
+        return mult;
+    }
+
+    function getIPGain() {
+        if (game.bp.lt(new BigNum(1.79e308))) return new BigNum(0);
+        let gain = game.bp.log10().sub(308).pow(1.5);
+        gain = gain.mul(game.ipMult);
+        gain = gain.mul(game.prestigeMult);
+        if (game.completedChallenges.includes(1)) gain = gain.mul(2);
+        return gain.floor();
+    }
+
+    function getHawkingRadiation() {
+        const timeMinutes = game.totalTimePlayed / 60000;
+        let hr = new BigNum(timeMinutes).mul(game.totalImplosions + 1).sqrt();
+        if (game.implosionUpgrades['i4']) hr = hr.mul(2);
+        return hr;
+    }
+
+    function buyRing(index) {
+        const cost = getRingCost(index);
+        if (game.bp.gte(cost)) {
+            game.bp = game.bp.sub(cost);
+            game.rings[index] = game.rings[index].add(1);
+            return true;
+        }
+        return false;
+    }
+
+    function buyMaxRings(index) {
+        let bought = 0;
+        while (buyRing(index)) bought++;
+        return bought;
+    }
+
+    function buyUpgrade(id) {
+        const upgrade = UPGRADES.find(u => u.id === id);
+        if (!upgrade || game.upgrades[id]) return false;
+        if (game.activeChallenge === 6) return false;
+        
+        if (game.bp.gte(upgrade.cost)) {
+            game.bp = game.bp.sub(upgrade.cost);
+            game.upgrades[id] = true;
+            upgrade.effect();
+            return true;
+        }
+        return false;
+    }
+
+    function buyImplosionUpgrade(id) {
+        const upgrade = IMPLOSION_UPGRADES.find(u => u.id === id);
+        if (!upgrade || game.implosionUpgrades[id]) return false;
+        
+        if (game.ip.gte(upgrade.cost)) {
+            game.ip = game.ip.sub(upgrade.cost);
+            game.implosionUpgrades[id] = true;
+            upgrade.effect();
+            return true;
+        }
+        return false;
+    }
+
+    function performImplosion() {
+        const ipGain = getIPGain();
+        if (ipGain.lte(0)) return false;
+        
+        game.ip = game.ip.add(ipGain);
+        game.totalIP = game.totalIP.add(ipGain);
+        game.totalImplosions++;
+        
+        game.bp = new BigNum(0);
+        game.rings = game.rings.map(() => new BigNum(0));
+        game.upgrades = {};
+        
+        if (game.implosionUpgrades['i2']) {
+            game.rings[0] = game.ip.clone();
+        }
+        
+        game.bpMult = new BigNum(1);
+        game.tickSpeed = new BigNum(1);
+        game.ringCostDiv = new BigNum(1);
+        
+        for (const id in game.implosionUpgrades) {
+            const upgrade = IMPLOSION_UPGRADES.find(u => u.id === id);
+            if (upgrade) upgrade.effect();
+        }
+        
+        if (game.phase < 2) game.phase = 2;
+        
+        return true;
+    }
+
+    function rollQuasar() {
+        if (game.ip.lt(10)) return null;
+        game.ip = game.ip.sub(10);
+        game.totalQuasarRolls++;
+        
+        if (game.phase < 3) game.phase = 3;
+        
+        const roll = Math.random();
+        let cumulative = 0;
+        let rarity = 'garbage';
+        
+        for (const [key, data] of Object.entries(RARITIES)) {
+            cumulative += data.chance;
+            if (roll < cumulative) {
+                rarity = key;
+                break;
+            }
+        }
+        
+        const isPlus = Math.random() < 0.1 && !['godly', 'impossible', 'omni', 'null'].includes(rarity);
+        
+        const quasar = {
+            id: Date.now() + Math.random(),
+            rarity,
+            plus: isPlus,
+            timestamp: Date.now()
+        };
+        
+        game.quasars.push(quasar);
+        
+        if (rarity === 'null') {
+            game.bp = game.bp.mul(-1).abs().add(new BigNum("1e100"));
+        }
+        
+        return quasar;
+    }
+
+    function startChallenge(id) {
+        if (game.activeChallenge) return false;
+        if (game.completedChallenges.includes(id) && id < 10) return false;
+        
+        game.activeChallenge = id;
+        game.challengeStartBP = game.bp.clone();
+        
+        game.bp = new BigNum(0);
+        game.rings = game.rings.map(() => new BigNum(0));
+        game.upgrades = {};
+        
+        if (game.phase < 4) game.phase = 4;
+        
+        return true;
+    }
+
+    function checkChallengeCompletion() {
+        if (!game.activeChallenge) return false;
+        
+        const challenge = CHALLENGES.find(c => c.id === game.activeChallenge);
+        if (game.bp.gte(challenge.goal)) {
+            if (!game.completedChallenges.includes(game.activeChallenge)) {
+                game.completedChallenges.push(game.activeChallenge);
+            }
+            
+            if (game.activeChallenge === 10) {
+                game.energyOverload = true;
+                game.phase = 5;
+            }
+            
+            exitChallenge();
+            return true;
+        }
+        return false;
+    }
+
+    function exitChallenge() {
+        game.activeChallenge = null;
+        game.bp = game.challengeStartBP;
+    }
+
+    function tearFabric() {
+        if (!game.energyOverload) return;
+        game.fabricTears++;
+        game.bp = game.bp.mul(1.01);
+        createFabricTear();
+    }
+
+    function createFabricTear() {
+        const container = document.getElementById('canvas-container');
+        const tear = document.createElement('div');
+        tear.className = 'fabric-tear';
+        tear.style.width = Math.random() * 200 + 50 + 'px';
+        tear.style.height = '2px';
+        tear.style.left = Math.random() * 100 + '%';
+        tear.style.top = Math.random() * 100 + '%';
+        tear.style.transform = `rotate(${Math.random() * 360}deg)`;
+        container.appendChild(tear);
+        setTimeout(() => tear.remove(), 2000);
+    }
+
+    function checkAchievements() {
+        for (const ach of ACHIEVEMENTS) {
+            if (!game.achievements.includes(ach.id) && ach.check(game)) {
+                game.achievements.push(ach.id);
+                showAchievementPopup(ach);
+            }
+        }
+    }
+
+    function showAchievementPopup(ach) {
+        const popup = document.createElement('div');
+        popup.className = 'achievement-popup';
+        popup.innerHTML = `<strong>🏆 Achievement Unlocked!</strong><br>${ach.name}`;
+        document.body.appendChild(popup);
+        setTimeout(() => popup.remove(), 3000);
+    }
+
+    function checkSecretCode(code) {
+        if (SECRET_ITEMS[code] && !game.secretItems.includes(code)) {
+            game.secretItems.push(code);
+            const item = SECRET_ITEMS[code];
+            showAchievementPopup({ name: item.name, desc: item.effect });
+            if (item.expBonus) game.expBonus = game.expBonus.add(item.expBonus);
+            return true;
+        }
+        return false;
+    }
+
+    // ==================== GAME LOOP ====================
+    function gameTick() {
+        const now = Date.now();
+        const delta = now - game.lastTick;
+        game.lastTick = now;
+        game.totalTimePlayed += delta;
+        
+        let tickMult = game.tickSpeed.toNumber();
+        if (game.activeChallenge === 2) tickMult /= 10;
+        if (game.activeChallenge === 8 && Math.random() < 0.5) tickMult = 0;
+        if (game.completedChallenges.includes(2)) tickMult *= 1.5;
+        if (game.completedChallenges.includes(8)) tickMult *= 2;
+        
+        const effectiveDelta = delta * tickMult / 1000;
+        
+        let prod = getTotalProduction();
+        let mult = getBPMultiplier();
+        let bpGain = prod.mul(mult).mul(effectiveDelta);
+        
+        if (game.expBonus.gt(0)) {
+            bpGain = bpGain.pow(new BigNum(1).add(game.expBonus));
+        }
+        
+        if (game.completedChallenges.includes(3)) {
+            bpGain = bpGain.add(game.bp.mul(0.1 * effectiveDelta));
+        }
+        
+        if (game.activeChallenge === 7) {
+            game.bp = game.bp.mul(Math.pow(0.99, effectiveDelta));
+        }
+        
+        if (game.activeChallenge === 3 && Math.random() < effectiveDelta / 10) {
+            game.bp = game.bp.mul(0.5 + Math.random() * 0.5);
+        }
+        
+        if (game.energyOverload) {
+            bpGain = bpGain.pow(1.001);
+        }
+        
+        game.bp = game.bp.add(bpGain);
+        game.totalBP = BigNum.max(game.totalBP, game.bp);
+        
+        game.hawkingRadiation = getHawkingRadiation();
+        
+        checkChallengeCompletion();
+        checkAchievements();
+        
+        updateCanvas();
+        updateUI();
+    }
+
+    // ==================== CANVAS VISUALS ====================
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function initVisuals() {
+        for (let i = 0; i < 5; i++) {
+            game.planets.push({
+                angle: Math.random() * Math.PI * 2,
+                distance: 150 + i * 30,
+                speed: 0.001 + Math.random() * 0.002,
+                size: 5 + Math.random() * 10,
+                color: `hsl(${Math.random() * 360}, 70%, 60%)`
+            });
+        }
+        
+        for (let i = 0; i < 20; i++) {
+            game.debris.push({
+                angle: Math.random() * Math.PI * 2,
+                distance: 100 + Math.random() * 120,
+                speed: 0.005 + Math.random() * 0.01
+            });
+        }
+    }
+
+    function updateCanvas() {
+        const width = canvas.width;
+        const height = canvas.height;
+        const cx = width / 2;
+        const cy = height / 2;
+        
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+        ctx.fillRect(0, 0, width, height);
+        
+        const rotSpeed = Math.min(0.1, 0.001 + game.bp.log10().toNumber() * 0.0001);
+        game.canvasRotation += rotSpeed;
+        
+        ctx.save();
+        ctx.translate(cx, cy);
+        
+        if (game.energyOverload) {
+            ctx.translate(
+                (Math.random() - 0.5) * 5,
+                (Math.random() - 0.5) * 5
+            );
+        }
+        
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i = 0; i < 3; i++) {
+            ctx.save();
+            ctx.rotate(game.canvasRotation + i * Math.PI / 3);
+            
+            const gradient = ctx.createRadialGradient(0, 0, 40, 0, 0, 150);
+            gradient.addColorStop(0, 'rgba(139, 92, 246, 0)');
+            gradient.addColorStop(0.5, 'rgba(139, 92, 246, 0.3)');
+            gradient.addColorStop(0.7, 'rgba(236, 72, 153, 0.2)');
+            gradient.addColorStop(1, 'rgba(236, 72, 153, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.ellipse(0, 0, 150, 40, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        
+        ctx.globalCompositeOperation = 'source-over';
+        for (let i = 0; i < game.rings.length; i++) {
+            if (game.rings[i].gt(0)) {
+                const radius = 60 + i * 15;
+                const alpha = Math.min(1, game.rings[i].log10().toNumber() * 0.1 + 0.2);
+                ctx.strokeStyle = `rgba(139, 92, 246, ${alpha})`;
+                ctx.lineWidth = 1 + game.rings[i].log10().toNumber() * 0.2;
+                ctx.beginPath();
+                ctx.arc(0, 0, radius, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        }
+        
+        ctx.globalCompositeOperation = 'lighter';
+        for (const planet of game.planets) {
+            planet.angle += planet.speed * (1 + rotSpeed * 10);
+            const x = Math.cos(planet.angle) * planet.distance;
+            const y = Math.sin(planet.angle) * planet.distance * 0.3;
+            
+            const glow = ctx.createRadialGradient(x, y, 0, x, y, planet.size * 2);
+            glow.addColorStop(0, planet.color);
+            glow.addColorStop(1, 'transparent');
+            ctx.fillStyle = glow;
+            ctx.beginPath();
+            ctx.arc(x, y, planet.size * 2, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = planet.color;
+            ctx.beginPath();
+            ctx.arc(x, y, planet.size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        for (const d of game.debris) {
+            d.angle += d.speed * (1 + rotSpeed * 5);
+            const x = Math.cos(d.angle) * d.distance;
+            const y = Math.sin(d.angle) * d.distance * 0.3;
+            
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(x, y, 2, 0, Math.PI * 2);
+            ctx.fill();
+        }
+        
+        ctx.globalCompositeOperation = 'source-over';
+        const coreGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, 50);
+        coreGradient.addColorStop(0, '#000');
+        coreGradient.addColorStop(0.8, '#000');
+        coreGradient.addColorStop(1, 'rgba(139, 92, 246, 0.5)');
+        ctx.fillStyle = coreGradient;
+        ctx.beginPath();
+        ctx.arc(0, 0, 50, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.strokeStyle = 'rgba(139, 92, 246, 0.8)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 52, 0, Math.PI * 2);
+        ctx.stroke();
+        
+        ctx.restore();
+        
+        if (game.energyOverload) {
+            ctx.fillStyle = `rgba(255, 0, 0, ${0.05 + Math.sin(Date.now() / 200) * 0.03})`;
+            ctx.fillRect(0, 0, width, height);
+        }
+    }
+
+    // ==================== UI UPDATES ====================
+    function updateUI() {
+        document.getElementById('bp-display').textContent = game.bp.toString();
+        document.getElementById('bp-display').style.color = game.energyOverload ? '#ef4444' : '#fff';
+        
+        if (game.phase >= 2) {
+            document.getElementById('ip-container').style.display = 'block';
+            document.getElementById('ip-display').textContent = game.ip.toString();
+            document.getElementById('hr-container').style.display = 'block';
+            document.getElementById('hr-display').textContent = game.hawkingRadiation.toString();
+            document.getElementById('implosion-tab').disabled = false;
+        }
+        
+        if (game.phase >= 3) {
+            document.getElementById('qp-container').style.display = 'block';
+            document.getElementById('qp-display').textContent = game.quasars.length;
+            document.getElementById('quasars-tab').disabled = false;
+        }
+        
+        if (game.phase >= 4 || game.totalImplosions >= 3) {
+            document.getElementById('challenges-tab').disabled = false;
+        }
+        
+        if (game.phase >= 5) {
+            document.getElementById('endgame-tab').disabled = false;
+        }
+        
+        if (game.energyOverload) {
+            document.getElementById('game-container').classList.add('energy-overload');
+        }
+    }
+
+    function renderGeneratorsTab() {
+        const tab = document.getElementById('tab-generators');
+        let html = '<div class="section-title">Orbital Rings</div>';
+        
+        for (let i = 0; i < RING_DATA.length; i++) {
+            const ring = RING_DATA[i];
+            const cost = getRingCost(i);
+            const prod = getRingProduction(i);
+            const canBuy = game.bp.gte(cost);
+            const disabled = (game.activeChallenge === 4 && i > 0) ? 'disabled' : '';
+            
+            html += `
+                <button class="generator-btn ${canBuy ? '' : 'disabled'}" onclick="buyRing(${i})" ${disabled}>
+                    <div class="btn-title">${ring.name}</div>
+                    <div class="btn-desc">+${prod.toString()} BP/s</div>
+                    <div class="btn-cost">Cost: ${cost.toString()} BP</div>
+                    <span class="btn-owned">Owned: ${game.rings[i].toString()}</span>
+                </button>
+            `;
+        }
+        
+        html += `<button class="upgrade-btn" onclick="for(let i=0;i<8;i++)buyMaxRings(i)" style="margin-top:10px;">Buy Max All</button>`;
+        
+        tab.innerHTML = html;
+    }
+
+    function renderUpgradesTab() {
+        const tab = document.getElementById('tab-upgrades');
+        let html = '<div class="section-title">Upgrades</div>';
+        
+        if (game.activeChallenge === 6) {
+            html += '<p style="color:#ef4444;">Upgrades disabled in Void challenge!</p>';
+        }
+        
+        for (const upgrade of UPGRADES) {
+            const owned = game.upgrades[upgrade.id];
+            const canBuy = game.bp.gte(upgrade.cost) && !owned && game.activeChallenge !== 6;
+            
+            html += `
+                <button class="upgrade-btn ${canBuy ? '' : 'disabled'}" onclick="buyUpgrade('${upgrade.id}')" ${owned || !canBuy ? 'disabled' : ''}>
+                    <div class="btn-title">${upgrade.name} ${owned ? '✓' : ''}</div>
+                    <div class="btn-desc">${upgrade.desc}</div>
+                    ${!owned ? `<div class="btn-cost">Cost: ${new BigNum(upgrade.cost).toString()} BP</div>` : ''}
+                </button>
+            `;
+        }
+        
+        tab.innerHTML = html;
+    }
+
+    function renderImplosionTab() {
+        const tab = document.getElementById('tab-implosion');
+        const ipGain = getIPGain();
+        
+        let html = `
+            <div class="section-title">Implosion (Prestige)</div>
+            <p>Reset your BP and Rings to gain Implosion Points.</p>
+            <p>Requires: 1.79e308 BP</p>
+            <p>Current BP: ${game.bp.toString()}</p>
+            <p style="color:#a855f7;">IP on reset: ${ipGain.toString()}</p>
+            
+            <button class="upgrade-btn prestige-btn" onclick="performImplosion()" ${ipGain.lte(0) ? 'disabled' : ''}>
+                IMPLODE FOR ${ipGain.toString()} IP
+            </button>
+            
+            <div class="section-title" style="margin-top:20px;">Implosion Upgrades</div>
+        `;
+        
+        for (const upgrade of IMPLOSION_UPGRADES) {
+            const owned = game.implosionUpgrades[upgrade.id];
+            const canBuy = game.ip.gte(upgrade.cost) && !owned;
+            
+            html += `
+                <button class="upgrade-btn ${canBuy ? '' : 'disabled'}" onclick="buyImplosionUpgrade('${upgrade.id}')" ${owned || !canBuy ? 'disabled' : ''}>
+                    <div class="btn-title">${upgrade.name} ${owned ? '✓' : ''}</div>
+                    <div class="btn-desc">${upgrade.desc}</div>
+                    ${!owned ? `<div class="btn-cost">Cost: ${upgrade.cost} IP</div>` : ''}
+                </button>
+            `;
+        }
+        
+        tab.innerHTML = html;
+    }
+
+    function renderQuasarsTab() {
+        const tab = document.getElementById('tab-quasars');
+        
+        let html = `
+            <div class="section-title">Quasar Gacha</div>
+            <p>Roll for powerful Quasars that boost your production!</p>
+            <p>Cost: 10 IP per roll</p>
+            
+            <button class="upgrade-btn quasar-roll" onclick="doQuasarRoll()" ${game.ip.lt(10) ? 'disabled' : ''}>
+                🌟 ROLL QUASAR 🌟
+            </button>
+            
+            <div class="section-title" style="margin-top:20px;">Your Quasars (${game.quasars.length})</div>
+        `;
+        
+        const displayQuasars = game.quasars.slice(-20).reverse();
+        for (const q of displayQuasars) {
+            const rarity = RARITIES[q.rarity];
+            html += `
+                <div class="quasar-item rarity-${q.rarity} ${q.plus ? 'plus-variant' : ''}">
+                    <strong>${rarity.name}${q.plus ? '+' : ''}</strong>
+                    <span style="float:right;">${rarity.mult > 0 ? rarity.mult + 'x' : 'GLITCH'}</span>
+                </div>
+            `;
+        }
+        
+        html += `
+            <div class="section-title" style="margin-top:20px;">Rarity Rates</div>
+            <div style="font-size:0.8em; color:#a78bfa;">
+        `;
+        for (const [key, data] of Object.entries(RARITIES)) {
+            html += `<div>${data.name}: ${(data.chance * 100).toFixed(4)}%</div>`;
+        }
+        html += '</div>';
+        
+        tab.innerHTML = html;
+    }
+
+    function doQuasarRoll() {
+        const result = rollQuasar();
+        if (result) {
+            renderQuasarsTab();
+            const rarity = RARITIES[result.rarity];
+            if (['godly', 'impossible', 'omni', 'null'].includes(result.rarity)) {
+                showAchievementPopup({ name: rarity.name + ' Quasar!', desc: 'Incredible luck!' });
+            }
+        }
+    }
+
+    function renderChallengesTab() {
+        const tab = document.getElementById('tab-challenges');
+        
+        let html = '<div class="section-title">Challenges</div>';
+        
+        if (game.activeChallenge) {
+            const challenge = CHALLENGES.find(c => c.id === game.activeChallenge);
+            html += `
+                <div style="background:rgba(239,68,68,0.2);padding:15px;border-radius:8px;border:2px solid #ef4444;margin-bottom:15px;">
+                    <h3>Active: ${challenge.name}</h3>
+                    <p>${challenge.desc}</p>
+                    <p>Goal: ${challenge.goal.toString()} BP</p>
+                    <p>Progress: ${game.bp.toString()}</p>
+                    <button class="upgrade-btn" onclick="exitChallenge()" style="background:#ef4444;">EXIT CHALLENGE</button>
+                </div>
+            `;
+        }
+        
+        for (const challenge of CHALLENGES) {
+            const completed = game.completedChallenges.includes(challenge.id);
+            const canStart = !game.activeChallenge && (!completed || challenge.id === 10);
+            
+            html += `
+                <button class="upgrade-btn challenge-btn ${completed ? 'completed' : ''}" 
+                        onclick="startChallenge(${challenge.id})" 
+                        ${!canStart ? 'disabled' : ''}>
+                    <div class="btn-title">${challenge.id}. ${challenge.name} ${completed ? '✓' : ''}</div>
+                    <div class="btn-desc">${challenge.desc}</div>
+                    <div class="btn-desc">Goal: ${challenge.goal.toString()} BP</div>
+                    <div class="btn-cost" style="color:#34d399;">Reward: ${challenge.reward}</div>
+                </button>
+            `;
+        }
+        
+        tab.innerHTML = html;
+    }
+
+    function renderEndgameTab() {
+        const tab = document.getElementById('tab-endgame');
+        
+        let html = `
+            <div class="section-title">⚡ ENERGY OVERLOAD ⚡</div>
+            <p style="color:#ef4444;">The e308 barrier has been shattered.</p>
+            <p>Numbers now scale beyond infinity.</p>
+            
+            <div class="section-title">Fabric Tearing</div>
+            <p>Tears: ${game.fabricTears}</p>
+            <button class="upgrade-btn" onclick="tearFabric()" style="background:linear-gradient(135deg,#fff,#000);">
+                TEAR THE FABRIC OF REALITY
+            </button>
+            <p style="font-size:0.8em;color:#a78bfa;">Each tear: BP ×1.01</p>
+            
+            <div class="section-title">White Hole</div>
+            <p>Coming soon: Reverse entropy mechanics</p>
+            
+            <div class="section-title">Time Manipulation</div>
+            <p>Time skips performed: ${game.timeSkips}</p>
+            <button class="upgrade-btn" onclick="performTimeSkip()">
+                SKIP 1 HOUR
+            </button>
+        `;
+        
+        tab.innerHTML = html;
+    }
+
+    function performTimeSkip() {
+        game.timeSkips++;
+        const prod = getTotalProduction().mul(getBPMultiplier()).mul(3600);
+        game.bp = game.bp.add(prod);
+        showAchievementPopup({ name: 'Time Skip!', desc: '+' + prod.toString() + ' BP' });
+    }
+
+    function renderAchievementsTab() {
+        const tab = document.getElementById('tab-achievements');
+        let html = '<div class="section-title">Achievements</div>';
+        
+        for (const ach of ACHIEVEMENTS) {
+            const unlocked = game.achievements.includes(ach.id);
+            html += `
+                <div class="achievement ${unlocked ? 'unlocked' : ''}">
+                    <strong>${unlocked ? '🏆' : '🔒'} ${ach.name}</strong>
+                    <p style="font-size:0.85em;margin-top:5px;">${ach.desc}</p>
+                </div>
+            `;
+        }
+        
+        tab.innerHTML = html;
+    }
+
+    function renderStatsTab() {
+        const tab = document.getElementById('tab-stats');
+        
+        const minutes = Math.floor(game.totalTimePlayed / 60000);
+        const hours = Math.floor(minutes / 60);
+        
+        let html = `
+            <div class="section-title">Statistics</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">Total BP Earned</div>
+                    <div class="stat-value">${game.totalBP.toString()}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Total IP Earned</div>
+                    <div class="stat-value">${game.totalIP.toString()}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Implosions</div>
+                    <div class="stat-value">${game.totalImplosions}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Quasar Rolls</div>
+                    <div class="stat-value">${game.totalQuasarRolls}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Challenges Done</div>
+                    <div class="stat-value">${game.completedChallenges.length}/10</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Achievements</div>
+                    <div class="stat-value">${game.achievements.length}/16</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Time Played</div>
+                    <div class="stat-value">${hours}h ${minutes % 60}m</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Current Phase</div>
+                    <div class="stat-value">${game.phase}</div>
+                </div>
+            </div>
+            
+            <div class="section-title" style="margin-top:20px;">Multipliers</div>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-label">BP Multiplier</div>
+                    <div class="stat-value">${getBPMultiplier().toString()}x</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Tick Speed</div>
+                    <div class="stat-value">${game.tickSpeed.toString()}x</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Exponent Bonus</div>
+                    <div class="stat-value">+${game.expBonus.toString()}</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Production/s</div>
+                    <div class="stat-value">${getTotalProduction().mul(getBPMultiplier()).toString()}</div>
+                </div>
+            </div>
+        `;
+        
+        tab.innerHTML = html;
+    }
+
+    function renderOptionsTab() {
+        const tab = document.getElementById('tab-options');
+        
+        let html = `
+            <div class="section-title">Save & Load</div>
+            <div class="save-buttons">
+                <button id="saveBtn" onclick="saveGame()">💾 Save</button>
+                <button id="loadBtn" onclick="loadGame()">📂 Load</button>
+                <button id="exportBtn" onclick="exportGame()">📤 Export</button>
+            </div>
+            <button id="resetBtn" onclick="hardReset()" style="width:100%;margin-top:10px;padding:10px;background:#ef4444;border:none;color:#fff;border-radius:5px;cursor:pointer;">
+                🗑️ HARD RESET
+            </button>
+            
+            <div class="section-title" style="margin-top:20px;">Secret Codes</div>
+            <input type="text" id="secret-input" placeholder="Enter secret code..." onkeypress="if(event.key==='Enter')trySecret()">
+            <button class="upgrade-btn" onclick="trySecret()" style="margin-top:5px;">Submit Code</button>
+            
+            <div class="section-title" style="margin-top:20px;">Unlocked Secrets</div>
+        `;
+        
+        for (const code of game.secretItems) {
+            const item = SECRET_ITEMS[code];
+            html += `<div class="quasar-item rarity-legendary"><strong>${item.name}</strong><br>${item.effect}</div>`;
+        }
+        
+        if (game.secretItems.length === 0) {
+            html += '<p style="color:#6b7280;">No secrets unlocked yet...</p>';
+        }
+        
+        html += `
+            <div class="section-title" style="margin-top:20px;">Import Save</div>
+            <textarea id="import-area" style="width:100%;height:60px;background:#000;border:1px solid #8b5cf6;color:#fff;padding:10px;border-radius:5px;" placeholder="Paste save data here..."></textarea>
+            <button class="upgrade-btn" onclick="importGame()" style="margin-top:5px;">Import</button>
+        `;
+        
+        tab.innerHTML = html;
+    }
+
+    function trySecret() {
+        const input = document.getElementById('secret-input');
+        if (checkSecretCode(input.value)) {
+            input.value = '';
+            renderOptionsTab();
+        }
+    }
+
+    // ==================== SAVE/LOAD ====================
+    function saveGame() {
+        const saveData = {
+            bp: game.bp.toJSON(),
+            totalBP: game.totalBP.toJSON(),
+            rings: game.rings.map(r => r.toJSON()),
+            upgrades: game.upgrades,
+            ip: game.ip.toJSON(),
+            totalIP: game.totalIP.toJSON(),
+            totalImplosions: game.totalImplosions,
+            hawkingRadiation: game.hawkingRadiation.toJSON(),
+            implosionUpgrades: game.implosionUpgrades,
+            quasars: game.quasars,
+            totalQuasarRolls: game.totalQuasarRolls,
+            completedChallenges: game.completedChallenges,
+            achievements: game.achievements,
+            secretItems: game.secretItems,
+            energyOverload: game.energyOverload,
+            fabricTears: game.fabricTears,
+            timeSkips: game.timeSkips,
+            totalTimePlayed: game.totalTimePlayed,
+            phase: game.phase,
+            bpMult: game.bpMult.toJSON(),
+            ipMult: game.ipMult.toJSON(),
+            tickSpeed: game.tickSpeed.toJSON(),
+            ringCostDiv: game.ringCostDiv.toJSON(),
+            expBonus: game.expBonus.toJSON(),
+            softcapStart: game.softcapStart.toJSON(),
+            prestigeMult: game.prestigeMult.toJSON(),
+            legendaryDecay: game.legendaryDecay
+        };
+        
+        localStorage.setItem('blackHoleIncremental', JSON.stringify(saveData));
+        showAchievementPopup({ name: 'Game Saved!', desc: '' });
+    }
+
+    function loadGame() {
+        const saveStr = localStorage.getItem('blackHoleIncremental');
+        if (!saveStr) return;
+        
+        try {
+            const saveData = JSON.parse(saveStr);
+            
+            game.bp = BigNum.fromJSON(saveData.bp);
+            game.totalBP = BigNum.fromJSON(saveData.totalBP);
+            game.rings = saveData.rings.map(r => BigNum.fromJSON(r));
+            game.upgrades = saveData.upgrades || {};
+            game.ip = BigNum.fromJSON(saveData.ip);
+            game.totalIP = BigNum.fromJSON(saveData.totalIP);
+            game.totalImplosions = saveData.totalImplosions || 0;
+            game.hawkingRadiation = BigNum.fromJSON(saveData.hawkingRadiation);
+            game.implosionUpgrades = saveData.implosionUpgrades || {};
+            game.quasars = saveData.quasars || [];
+            game.totalQuasarRolls = saveData.totalQuasarRolls || 0;
+            game.completedChallenges = saveData.completedChallenges || [];
+            game.achievements = saveData.achievements || [];
+            game.secretItems = saveData.secretItems || [];
+            game.energyOverload = saveData.energyOverload || false;
+            game.fabricTears = saveData.fabricTears || 0;
+            game.timeSkips = saveData.timeSkips || 0;
+            game.totalTimePlayed = saveData.totalTimePlayed || 0;
+            game.phase = saveData.phase || 1;
+            game.bpMult = BigNum.fromJSON(saveData.bpMult || { m: 1, e: 0, t: 0 });
+            game.ipMult = BigNum.fromJSON(saveData.ipMult || { m: 1, e: 0, t: 0 });
+            game.tickSpeed = BigNum.fromJSON(saveData.tickSpeed || { m: 1, e: 0, t: 0 });
+            game.ringCostDiv = BigNum.fromJSON(saveData.ringCostDiv || { m: 1, e: 0, t: 0 });
+            game.expBonus = BigNum.fromJSON(saveData.expBonus || { m: 0, e: 0, t: 0 });
+            game.softcapStart = BigNum.fromJSON(saveData.softcapStart || { m: 1, e: 100, t: 0 });
+            game.prestigeMult = BigNum.fromJSON(saveData.prestigeMult || { m: 1, e: 0, t: 0 });
+            game.legendaryDecay = saveData.legendaryDecay || 1;
+            
+            showAchievementPopup({ name: 'Game Loaded!', desc: '' });
+        } catch (e) {
+            console.error('Load failed:', e);
+        }
+    }
+
+    function exportGame() {
+        const saveData = localStorage.getItem('blackHoleIncremental');
+        if (saveData) {
+            const encoded = btoa(saveData);
+            navigator.clipboard.writeText(encoded);
+            showAchievementPopup({ name: 'Exported!', desc: 'Copied to clipboard' });
+        }
+    }
+
+    function importGame() {
+        const area = document.getElementById('import-area');
+        try {
+            const decoded = atob(area.value.trim());
+            localStorage.setItem('blackHoleIncremental', decoded);
+            loadGame();
+            area.value = '';
+        } catch (e) {
+            alert('Invalid save data!');
+        }
+    }
+
+    function hardReset() {
+        if (confirm('Are you sure? This will delete ALL progress!')) {
+            if (confirm('Really? There is no going back!')) {
+                localStorage.removeItem('blackHoleIncremental');
+                location.reload();
+            }
+        }
+    }
+
+    // ==================== TAB SWITCHING ====================
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            if (btn.disabled) return;
+            
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            
+            btn.classList.add('active');
+            document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+            
+            renderCurrentTab(btn.dataset.tab);
+        });
+    });
+
+    function renderCurrentTab(tab) {
+        switch (tab) {
+            case 'generators': renderGeneratorsTab(); break;
+            case 'upgrades': renderUpgradesTab(); break;
+            case 'implosion': renderImplosionTab(); break;
+            case 'quasars': renderQuasarsTab(); break;
+            case 'challenges': renderChallengesTab(); break;
+            case 'endgame': renderEndgameTab(); break;
+            case 'achievements': renderAchievementsTab(); break;
+            case 'stats': renderStatsTab(); break;
+            case 'options': renderOptionsTab(); break;
+        }
+    }
+
+    function renderAllTabs() {
+        const activeTab = document.querySelector('.tab-btn.active');
+        if (activeTab) {
+            renderCurrentTab(activeTab.dataset.tab);
+        }
+    }
+
+    // ==================== INITIALIZATION ====================
+    function init() {
+        loadGame();
+        initVisuals();
+        renderAllTabs();
+        
+        setInterval(gameTick, 50);
+        setInterval(renderAllTabs, 500);
+        setInterval(saveGame, 30000);
+        
+        canvas.addEventListener('click', () => {
+            const clickPower = getTotalProduction().mul(getBPMultiplier()).div(10).add(1);
+            game.bp = game.bp.add(clickPower);
+            
+            if (game.energyOverload) {
+                tearFabric();
+            }
+        });
+        
+        console.log('Black Hole Incremental initialized!');
+        console.log('Secret codes exist... try to find them!');
+    }
+
+    init();
+    </script>
+</body>
+</html>
